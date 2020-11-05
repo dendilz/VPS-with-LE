@@ -1,0 +1,35 @@
+---
+# tasks file for install_letsencrypt
+- name: install letsencrypt
+  apt: name=letsencrypt state=latest
+
+- name: remove default nginx config
+  file: name=/etc/nginx/sites-enabled/default state=absent
+
+- name: install nginx site for letsencrypt requests
+  template:
+    src: nginx-http.j2
+    dest: /etc/nginx/sites-enabled/http
+  notify: reload nginx
+
+- name: generate dhparams
+  shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
+  args:
+    creates: /etc/nginx/dhparams.pem
+
+- name: install nginx site for specified site
+  template:
+    src: nginx-le.j2
+    dest: /etc/nginx/sites-enabled/le
+
+- name: create letsencrypt certificate
+  shell: letsencrypt certonly -n --webroot -w /var/www/html -m dendilz@bk.ru --agree-tos -d {{ domain_name }}
+  args:
+    creates: /etc/letsencrypt/live/{{ domain_name }}
+  notify: reload nginx
+
+- name: add letsencrypt cronjob for cert renewal
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: certbot renew --post-hook "systemctl reload nginx"
