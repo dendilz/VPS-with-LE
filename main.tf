@@ -1,3 +1,7 @@
+variable "domain_name" {
+  default = "dendilz-do10"
+}
+
 variable "hcloud_token" {}
 
 variable "aws_access_key" {}
@@ -18,24 +22,23 @@ data "hcloud_ssh_key" "rebrain_ssh_key" {
   name = "REBRAIN.SSH.PUB.KEY"
 }
 
-resource "hcloud_ssh_key" "danil_pub_key" {
+data "hcloud_ssh_key" "danil_pub_key" {
   name       = "Danil.pub.key"
-  public_key = file("~/.ssh/id_rsa.pub")
 }
 
 resource "hcloud_server" "hcloud_node" {
-  name        = "dendilz-django.devops.rebrain.srwx.net"
+  name        = "${var.domain_name}.devops.rebrain.srwx.net"
   image       = "ubuntu-18.04"
   server_type = "cx11"
   ssh_keys    = [data.hcloud_ssh_key.rebrain_ssh_key.name,
-                 hcloud_ssh_key.danil_pub_key.id]
+                data.hcloud_ssh_key.danil_pub_key.id]
   labels = {
     "module" = "devops"
     "email"  = "dendilz_at_bk_ru"
   }
 
   provisioner "local-exec" {
-    command = "echo ${hcloud_server.hcloud_node.ipv4_address} > ip"
+    command = "echo ${hcloud_server.hcloud_node.name} > domain"
   }
 }
 

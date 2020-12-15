@@ -38,6 +38,7 @@ override.tf.json
 
 inventory
 ip
+domain
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform,ansible
 
