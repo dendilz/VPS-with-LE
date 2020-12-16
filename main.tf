@@ -1,6 +1,6 @@
-variable "domain_name" {
-  default = "dendilz-do10"
-}
+variable "devs" {}
+
+variable "username" {}
 
 variable "hcloud_token" {}
 
@@ -22,23 +22,25 @@ data "hcloud_ssh_key" "rebrain_ssh_key" {
   name = "REBRAIN.SSH.PUB.KEY"
 }
 
-data "hcloud_ssh_key" "danil_pub_key" {
+resource "hcloud_ssh_key" "danil_pub_key" {
   name       = "Danil.pub.key"
+  public_key = file("~/.ssh/id_rsa.pub")
 }
 
 resource "hcloud_server" "hcloud_node" {
-  name        = "${var.domain_name}.devops.rebrain.srwx.net"
+  count       = length(var.devs)
+  name        = "do16.${element(var.devs, count.index)}.${var.username}.devops.rebrain.srwx.net"
   image       = "ubuntu-18.04"
   server_type = "cx11"
   ssh_keys    = [data.hcloud_ssh_key.rebrain_ssh_key.name,
-                data.hcloud_ssh_key.danil_pub_key.id]
+                hcloud_ssh_key.danil_pub_key.id]
   labels = {
     "module" = "devops"
     "email"  = "dendilz_at_bk_ru"
   }
 
   provisioner "local-exec" {
-    command = "echo ${hcloud_server.hcloud_node.name} > domain"
+    command = "echo ${self.name} >> domain"
   }
 }
 
@@ -47,11 +49,12 @@ data "aws_route53_zone" "primary" {
 }
 
 resource "aws_route53_record" "s53_record" {
+  count   = length(var.devs)
   zone_id = data.aws_route53_zone.primary.zone_id
-  name    = hcloud_server.hcloud_node.name
+  name    = element(hcloud_server.hcloud_node.*.name, count.index)
   type    = "A"
   ttl     = "300"
-  records = [element(hcloud_server.hcloud_node.*.ipv4_address, 0)]
+  records = [element(hcloud_server.hcloud_node.*.ipv4_address, count.index)]
 }
 
 resource "null_resource" "install_nginx" {
